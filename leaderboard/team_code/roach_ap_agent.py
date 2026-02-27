@@ -110,6 +110,7 @@ class ROACHAgent(autonomous_agent.AutonomousAgent):
 			(self.save_path / 'measurements').mkdir()
 			(self.save_path / 'supervision').mkdir()
 			(self.save_path / 'bev').mkdir()
+			(self.save_path / 'lidar').mkdir()
 
 	def _init(self):
 		self._waypoint_planner = RoutePlanner(4.0, 50)
@@ -221,7 +222,13 @@ class ROACHAgent(autonomous_agent.AutonomousAgent):
 					'type': 'sensor.speedometer',
 					'reading_frequency': 20,
 					'id': 'speed'
-					}
+					},
+				{   
+                    'type': 'sensor.lidar.ray_cast',
+                    'x': 1.3, 'y': 0.0, 'z': 2.5,
+                    'roll': 0.0, 'pitch': 0.0, 'yaw': -90.0,
+                    'id': 'lidar'
+                    },
 				]
 
 	def tick(self, input_data, timestamp):
@@ -271,6 +278,7 @@ class ROACHAgent(autonomous_agent.AutonomousAgent):
 				'speed': speed,
 				'compass': compass,
 				'weather': weather,
+                'lidar' : input_data['lidar'][1],
 				}
 		next_wp, next_cmd = self._route_planner.run_step(self._get_position(result))
 
@@ -467,7 +475,7 @@ class ROACHAgent(autonomous_agent.AutonomousAgent):
 		outfile.close()
 		with open(self.save_path / 'supervision' / ('%04d.npy' % frame), 'wb') as f:
 			np.save(f, supervision_dict)
-		
+		np.save(self.save_path / 'lidar' / ('%04d.npy' % frame), tick_data['lidar'], allow_pickle=True)
 			
 	def get_target_gps(self, gps, compass):
 		# target gps

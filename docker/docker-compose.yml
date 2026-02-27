@@ -1,0 +1,39 @@
+# version: '3.8'
+
+services:
+  carla_server-09101:
+    container_name: carla_server-09101
+    image: carlasim/carla:0.9.10.1
+    runtime: nvidia
+    network_mode: host
+    environment:
+      - DISPLAY=${DISPLAY}
+      - NVIDIA_VISIBLE_DEVICES=all
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+    command: bash CarlaUE4.sh -nosound
+    
+  tcp-carla:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: tcp-carla:0.9.10.1
+    container_name: tcp-carla-09101
+    privileged: true
+    network_mode: host
+    ipc: host
+    runtime: nvidia
+    environment:
+      - DISPLAY=$DISPLAY
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+      - SHELL=/bin/bash
+    volumes:
+      # 挂载1：本地TCP项目根目录 → 容器内/workspace/TCP（核心：实时同步代码）
+      - ../:/workspace/TCP
+      # 挂载2：本地CARLA 0.9.10.1目录 → 容器内/workspace/carla
+      - ~/carla_0.9.10.1:/workspace/carla
+      # 挂载3：X11显示（如需容器内显示CARLA窗口）
+      - /tmp/.X11-unix:/tmp/.X11-unix
+    stdin_open: true
+    tty: true
