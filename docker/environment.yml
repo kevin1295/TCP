@@ -280,3 +280,4 @@ dependencies:
     - webencodings==0.5.1
     - widgetsnbextension==3.5.2
     - yaspin==2.1.0
+    - -i https://pypi.tuna.tsinghua.edu.cn/simple

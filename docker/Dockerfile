@@ -10,6 +10,7 @@ ENV LC_ALL=C.UTF-8
 ENV LANG=C.UTF-8
 
 # 1. 替换apt源为清华源（加速系统依赖安装）
+RUN ls /etc/apt/
 RUN mv /etc/apt/sources.list /etc/apt/sources.list.bak
 COPY tuna-mirror/sources.list /etc/apt/sources.list
 

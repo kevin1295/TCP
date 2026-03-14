@@ -23,6 +23,7 @@ class CARLA_Data(Dataset):
 		self.theta = []
 		self.speed = []
 
+		self.lidar_data = []
 
 		self.value = []
 		self.feature = []
@@ -57,6 +58,8 @@ class CARLA_Data(Dataset):
 			self.y += data['input_y']
 			self.theta += data['input_theta']
 			self.speed += data['speed']
+
+			self.lidar_data += data['lidar_data']
 
 			self.future_x += data['future_x']
 			self.future_y += data['future_y']
@@ -151,6 +154,12 @@ class CARLA_Data(Dataset):
 		data['target_point'] = local_command_point_aim[:2]
 
 		data['speed'] = self.speed[index]
+		
+		# 节约显存版
+		data['pcl'] = np.load(self.lidar_data[index], allow_pickle=True)
+		# 显存充裕版
+		# data['pcl] = self.lidar_data
+
 		data['feature'] = self.feature[index]
 		data['value'] = self.value[index]
 		command = self.command[index]

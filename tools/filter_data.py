@@ -3,7 +3,7 @@ import os
 import sys
 import tqdm
 
-def remove_files(root, index, items = {"bev":".png", "meta":".json", "rgb":".png", "supervision":".npy"}):
+def remove_files(root, index, items = {"bev":".png", "meta":".json", "rgb":".png", "supervision":".npy", "lidar":".npy"}):
 	# items = {"measurements":".json", "rgb_front":".png"}
 	items = {}
 	sub_folders = list(os.listdir(root))
@@ -21,20 +21,26 @@ def remove_files(root, index, items = {"bev":".png", "meta":".json", "rgb":".png
 
 
 if __name__ == '__main__':
-	routes_type = ["short"]
-	towns = ["town05", "town06","town07", "town10"]
+	# routes_type = [None, "train", "val"]
+	routes_type = [None]
+	# towns = ["town05", "town06","town07", "town10"]
+	towns = ["town01"]
 
 	result_path = ""
-	result_pattern = "routes_{}_{}.json" # town, type
+	result_pattern = "data/routes_{}_{}.json" # town, type
 
-	data_path = ""
+	data_path = "data"
 	data_pattern = "{}_{}" # town, type
 
 	for type in routes_type:
 		print(type)
 		for town in tqdm.tqdm(towns):
-			result_file = result_pattern.format(town, type)
-			data_folder = data_pattern.format(town, type)
+			if type is not None:
+				result_file = result_pattern.format(town, type)
+				data_folder = data_pattern.format(town, type)
+			else:
+				result_file = "data/route_{}.json".format(town)
+				data_folder = "{}".format(town)
 			data_folder = os.path.join(data_path, data_folder)
 			sub_folders = os.listdir(data_folder)
 			sub_folders = sorted(list(sub_folders))
