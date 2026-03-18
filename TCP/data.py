@@ -5,7 +5,8 @@ import torch
 from torch.utils.data import Dataset
 from torchvision import transforms as T
 
-from TCP.augment import hard as augmenter
+# from TCP.augment import hard as augmenter	# py38
+from TCP.tvhard import hard as augmenter	#py310
 
 class CARLA_Data(Dataset):
 

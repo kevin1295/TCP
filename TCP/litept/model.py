@@ -64,11 +64,12 @@ class Point(Dict):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # If one of "offset" or "batch" do not exist, generate by the existing one
-        if "batch" not in self.keys() and "offset" in self.keys():
+        if "batch" not in self.keys() and "offset" in self.keys(): # ✅
             self["batch"] = offset2batch(self.offset)
         elif "offset" not in self.keys() and "batch" in self.keys():
             self["offset"] = batch2offset(self.batch)
 
+    # ❌ 这个函数不在流程里
     def serialization(self, order="z", depth=None, shuffle_orders=False):
         """
         Point Cloud Serialization
@@ -140,7 +141,7 @@ class Point(Dict):
         pad: padding sparse for sparse shape.
         """
         assert {"feat", "batch"}.issubset(self.keys())
-        if "grid_coord" not in self.keys():
+        if "grid_coord" not in self.keys(): # ✅
             # if you don't want to operate GridSampling in data augmentation,
             # please add the following augmentation into your pipline:
             # dict(type="Copy", keys_dict={"grid_size": 0.01}),
@@ -149,9 +150,9 @@ class Point(Dict):
             self["grid_coord"] = torch.div(
                 self.coord - self.coord.min(0)[0], self.grid_size, rounding_mode="trunc"
             ).int()
-        if "sparse_shape" in self.keys():
+        if "sparse_shape" in self.keys(): # ❌
             sparse_shape = self.sparse_shape
-        else:
+        else: # ✅
             sparse_shape = torch.add(
                 torch.max(self.grid_coord, dim=0).values, pad
             ).tolist()
@@ -815,7 +816,7 @@ class LitePT(PointModule):
                 self.enc.add(module=enc, name=f"enc{s}")
 
         # decoder
-        if not self.enc_mode:
+        if not self.enc_mode: # ❌
             dec_drop_path = [
                 x.item() for x in torch.linspace(0, drop_path, sum(dec_depths))
             ]
@@ -875,14 +876,14 @@ class LitePT(PointModule):
            batch [N]: batch index of each point
         """
         point = Point(data_dict)
-        if self.enc_attn[0]:
+        if self.enc_attn[0]: # ❌
             point.serialization(order=self.order, shuffle_orders=self.shuffle_orders)
         point.sparsify()
 
         point = self.embedding(point)
         point = self.enc(point)
 
-        if not self.enc_mode:
+        if not self.enc_mode: # ❌
             point = self.dec(point)
 
         return point

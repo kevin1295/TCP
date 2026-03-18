@@ -22,12 +22,12 @@ def remove_files(root, index, items = {"bev":".png", "meta":".json", "rgb":".png
 
 if __name__ == '__main__':
 	# routes_type = [None, "train", "val"]
-	routes_type = [None]
+	routes_type = ["val"]
 	# towns = ["town05", "town06","town07", "town10"]
 	towns = ["town01"]
 
 	result_path = ""
-	result_pattern = "data/routes_{}_{}.json" # town, type
+	result_pattern = "data/route_{}_{}.json" # town, type
 
 	data_path = "data"
 	data_pattern = "{}_{}" # town, type

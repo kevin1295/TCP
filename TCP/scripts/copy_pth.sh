@@ -1,0 +1,1 @@
+sudo cp $TCP_PATH/TCP/resnet34-333f7ec4.pth /root/.cache/torch/hub/checkpoints/resnet34-333f7ec4.pth

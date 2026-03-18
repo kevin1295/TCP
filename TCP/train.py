@@ -11,7 +11,8 @@ from torch.distributions import Beta
 
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import ModelCheckpoint
-from pytorch_lightning.plugins import DDPPlugin
+# from pytorch_lightning.plugins import DDPPlugin		# python37
+from pytorch_lightning.strategies import DDPStrategy	# python310
 
 from TCP.model import TCP
 from TCP.data import CARLA_Data
@@ -188,7 +189,8 @@ if __name__ == "__main__":
 											gpus = args.gpus,
 											accelerator='ddp',
 											sync_batchnorm=True,
-											plugins=DDPPlugin(find_unused_parameters=False),
+											# plugins=DDPPlugin(find_unused_parameters=False),	# python38
+											strategy=DDPStrategy(find_unused_parameters=False),	# python310
 											profiler='simple',
 											benchmark=True,
 											log_every_n_steps=1,

@@ -96,7 +96,7 @@ def gen_single_route(route_folder):
 		
 		lidar_file = os.path.join(route_folder, "lidar", f"{str(i).zfill(4)}.npy")
 		lidar_data = np.load(lidar_file, allow_pickle=True)
-		lidar_data = align_points(lidar_data)
+		lidar_data = align_points(lidar_data)	# 换用 LitePT 后支持不同长度的数据
 		
 		# 节约显存版
 		np.save(lidar_file, lidar_data, allow_pickle=True)
@@ -259,7 +259,7 @@ if __name__ == '__main__':
 	# data_path = "tcp_carla_data"
 	# towns = ["town01","town01_val","town01_addition","town02","town02_val","town03","town03_val","town03_addition", "town04","town04_val", "town04_addition", "town05", "town05_val", "town05_addition" ,"town06","town06_val", "town06_addition","town07", "town07_val", "town10", "town10_addition","town10_val"]
 	data_path = "data"
-	towns = ["town01"]
+	towns = ["town01_val"]
 	pattern = "{}" # town type
 	import tqdm
 	total = 0
