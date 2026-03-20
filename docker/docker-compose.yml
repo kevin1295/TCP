@@ -22,10 +22,10 @@ services:
   #     - NVIDIA_VISIBLE_DEVICES=all
   #     - NVIDIA_DRIVER_CAPABILITIES=all
   #   command: bash CarlaUE4.sh -RenderOffScreen -nosound
-    
+  
   tcp-carla:
     build:
-      context: .
+      context: py37
       dockerfile: Dockerfile
     image: tcp-carla:0.9.10.1
     container_name: tcp-carla-09101
@@ -41,6 +41,27 @@ services:
     volumes:
       - ../:/workspace/TCP
       - ~/carla_0.9.10.1:/workspace/carla
+      - /tmp/.X11-unix:/tmp/.X11-unix
+    stdin_open: true
+    tty: true
+
+  dl-work:
+    build:
+      context: py311
+      dockerfile: Dockerfile
+    image: dl-work:3.11-cuda12.6-torch2.8.0
+    container_name: dl-work-py311
+    privileged: true
+    network_mode: host
+    ipc: host
+    runtime: nvidia
+    environment:
+      - DISPLAY=$DISPLAY
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+      - SHELL=/bin/bash
+    volumes:
+      - ../:/workspace/TCP
       - /tmp/.X11-unix:/tmp/.X11-unix
     stdin_open: true
     tty: true

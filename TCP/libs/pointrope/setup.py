@@ -11,7 +11,7 @@ all_cuda_archs = [
     '-gencode', 'arch=compute_90,code=sm_90',
     # '-gencode', 'arch=compute_75,code=sm_75',
     # '-gencode', 'arch=compute_80,code=sm_80',
-    # '-gencode', 'arch=compute_86,code=sm_86'
+    '-gencode', 'arch=compute_86,code=sm_86'
 ]
 
 setup(
@@ -25,8 +25,11 @@ setup(
                 ],
                 extra_compile_args = dict(
                     nvcc=['-O3','--ptxas-options=-v',"--use_fast_math"]+all_cuda_archs, 
-                    cxx=['-O3'])
-                )
+                    cxx=['-O3']),
+                extra_link_args = [
+                    '-Wl,-rpath,/opt/conda/lib/python3.11/site-packages/torch/lib'
+                ]
+            ),
     ],
     cmdclass = {
         'build_ext': BuildExtension

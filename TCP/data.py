@@ -5,7 +5,6 @@ import torch
 from torch.utils.data import Dataset
 from torchvision import transforms as T
 
-# from TCP.augment import hard as augmenter	# py38
 from TCP.tvhard import hard as augmenter	#py310
 
 class CARLA_Data(Dataset):
@@ -90,8 +89,8 @@ class CARLA_Data(Dataset):
 		data['front_img'] = self.front_img[index]
 
 		if self.img_aug:
-			data['front_img'] = self._im_transform(augmenter(self._batch_read_number).augment_image(np.array(
-					Image.open(self.root+self.front_img[index][0]))))
+			aug = augmenter(self._batch_read_number)
+			data['fromt_img'] = self._im_transform(aug(Image.open(self.root+self.front_img[index][0])))
 		else:
 			data['front_img'] = self._im_transform(np.array(
 					Image.open(self.root+self.front_img[index][0])))

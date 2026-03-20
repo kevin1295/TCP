@@ -1,8 +1,7 @@
 import torch
 import torchvision.transforms as T
 import torchvision.transforms.functional as F
-import numpy as np
-from typing import Tuple, Optional
+from typing import Tuple
 import random
 
 
