@@ -1,11 +1,8 @@
-# 基础镜像：Ubuntu 20.04 + Conda + CUDA 11.3（匹配pytorch 1.10.1）
-FROM nvidia/cuda:11.3.1-cudnn8-devel-ubuntu20.04
+# 基础镜像：Ubuntu 22.04 + CUDA 12.8（匹配pytorch 2.9.0）
+FROM nvidia/cuda:12.8.0-cudnn-runtime-ubuntu22.04
 
 # 避免交互性输入
 ENV DEBIAN_FRONTEND=noninteractive
-# 设置Conda环境变量
-ENV CONDA_DIR=/opt/conda
-ENV PATH=$CONDA_DIR/bin:$PATH
 ENV LC_ALL=C.UTF-8
 ENV LANG=C.UTF-8
 
@@ -26,41 +23,34 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxrender-dev \
     libomp-dev \
     openssh-client \
-    libjpeg-dev \
-    && apt-get clean && rm -rf /var/lib/apt/lists/*
+    libjpeg-dev
+RUN apt-get install -y --no-install-recommends \
+    python-is-python3 \
+    python3-pip \
+    python3-venv \
+    python3-dev
+RUN apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# 3. 安装Miniconda（适配Python 3.7）
-RUN wget --quiet https://mirrors.tuna.tsinghua.edu.cn/anaconda/miniconda/Miniconda3-py37_4.12.0-Linux-x86_64.sh -O miniconda.sh && \
-    bash miniconda.sh -b -p $CONDA_DIR && \
-    rm miniconda.sh && \
-    # 初始化Conda
-    conda init bash && \
-    # 清理缓存
-    conda clean -afy
-
-# 4. 配置Conda清华源（核心：加速Conda包下载）
-COPY tuna-mirror/.condarc /root/.condarc
 RUN mkdir -p /root/.config/pip/
 COPY tuna-mirror/pip.config /root/.config/pip/pip.config
+RUN pip config set global.index-url https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple
 
 # 5. 复制environment.yml并创建Conda环境
-COPY environment.yml /tmp/environment.yml
-# 创建环境时强制使用清华源，同时配置pip源
-RUN conda env create -f /tmp/environment.yml -n TCP && \
-    conda clean -afy && \
-    rm /tmp/environment.yml && \
-    # 激活环境（永久生效）
-    /bin/bash -c "source activate TCP"
-
+COPY requirements.txt /tmp/requirements.txt
+RUN pip install --upgrade pip
+RUN pip install torch==2.9.0 torchvision==0.24.0 torchaudio==2.9.0 --index-url https://download.pytorch.org/whl/cu128
+RUN pip install torch-geometric && \
+    pip install torch-scatter torch-sparse torch-cluster torch-spline-conv -f https://data.pyg.org/whl/torch-2.9.0+cu128.html
+RUN pip install -r /tmp/requirements.txt && \
+    rm /tmp/requirements.txt
+    
 # 6. 安装CARLA Python API
-COPY carla*.egg /tmp/
-RUN bash -c "source activate TCP && \
-    easy_install /tmp/carla*.egg && \
-    rm /tmp/carla*.egg"
+COPY carla*.whl /tmp/
+RUN pip install /tmp/carla*.whl && \
+    rm /tmp/carla*.whl
 
 # 7. 创建工作目录（后续通过挂载映射项目代码）
 WORKDIR /workspace/TCP
-RUN echo "conda activate TCP" >> ~/.bashrc
 
 # 8. 配置CARLA/ScenarioRunner/Leaderboard环境变量
 ENV CARLA_ROOT=/workspace/carla
@@ -69,7 +59,7 @@ ENV LEADERBOARD_ROOT=/workspace/TCP/leaderboard
 ENV TEAM_CODE_ROOT=/workspace/TCP/team_code
 ENV PYTHONPATH=/workspace/TCP:\
 $PYTHONPATH:\
-$CARLA_ROOT/PythonAPI/carla/dist/carla-0.9.10.1-py3.7-linux-x86_64.egg:\
+$CARLA_ROOT/PythonAPI/carla/dist/carla-0.9.15-py3.7-linux-x86_64.whl:\
 $CARLA_ROOT/PythonAPI/carla/agents:\
 $CARLA_ROOT/PythonAPI/carla:\
 $CARLA_ROOT/PythonAPI:\

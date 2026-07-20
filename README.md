@@ -1,112 +1,67 @@
-> [!IMPORTANT]
-> 🌟 Stay up to date at [opendrivelab.com](https://opendrivelab.com/#news)!
+# FishDrive
 
-# TCP - Trajectory-guided Control Prediction for End-to-end Autonomous Driving: A Simple yet Strong Baseline
+> 基于 TCP 的自动驾驶模型，集成 LiDAR 点云模块与 ROS2 部署方案。
+> 由于计算平台几经变动，全部代码正在整理。
 
-![teaser](assets/teaser_.png)
+## 立项
 
-> Trajectory-guided Control Prediction for End-to-end Autonomous Driving: A Simple yet Strong Baseline  
-> [Penghao Wu*](https://scholar.google.com/citations?user=9mssd5EAAAAJ&hl=en), [Xiaosong Jia*](https://jiaxiaosong1002.github.io/), [Li Chen*](https://scholar.google.com/citations?user=ulZxvY0AAAAJ&hl=en), [Junchi Yan](https://thinklab.sjtu.edu.cn/), [Hongyang Li](https://lihongyang.info/), [Yu Qiao](http://mmlab.siat.ac.cn/yuqiao/)    
->  - [arXiv Paper](https://arxiv.org/abs/2206.08129), NeurIPS 2022
->  - [Blog in Chinese](https://zhuanlan.zhihu.com/p/532665469)
+本项目源自于 2026 年"Intel 杯"大学生电子设计竞赛 AI 专题赛赛题，团队考查开发平台性能后尝试构建自动驾驶模型。
 
-	
-[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/trajectory-guided-control-prediction-for-end/autonomous-driving-on-carla-leaderboard)](https://paperswithcode.com/sota/autonomous-driving-on-carla-leaderboard?p=trajectory-guided-control-prediction-for-end)
+在经典自动驾驶模型 [TCP（NeurIPS 2022）](https://arxiv.org/abs/2206.08129) 基础上进行创新设计，主要创新包括添加点云模块、设计特征融合方式、量化部署等。
 
-This repository contains the code for the paper [Trajectory-guided Control Prediction for End-to-end Autonomous Driving: A Simple yet Strong Baseline](https://arxiv.org/abs/2206.08129).
-
-
-TCP is a simple unified framework to combine trajectory and control prediction for end-to-end autonomous driving.  By time of release in June 17 2022, our method achieves new state-of-the-art on [CARLA AD Leaderboard](https://leaderboard.carla.org/leaderboard/), in which we rank the **first** in terms of the Driving Score and Infraction Penalty using only a single camera as input. 
-
-
-## Setup
-Download and setup CARLA 0.9.10.1
-```
-mkdir carla
-cd carla
-wget https://carla-releases.s3.eu-west-3.amazonaws.com/Linux/CARLA_0.9.10.1.tar.gz
-wget https://carla-releases.s3.eu-west-3.amazonaws.com/Linux/AdditionalMaps_0.9.10.1.tar.gz
-tar -xf CARLA_0.9.10.1.tar.gz
-tar -xf AdditionalMaps_0.9.10.1.tar.gz
-rm CARLA_0.9.10.1.tar.gz
-rm AdditionalMaps_0.9.10.1.tar.gz
-cd ..
-```
-
-Clone this repo and build the environment
+## 任务流程
 
 ```
-git clone https://github.com/OpenPerceptionX/TCP.git
-cd TCP
-conda env create -f environment.yml --name TCP
-conda activate TCP
+① Roach 采集 ──→ ② TCP 训练 ──→ ③ Torch 推理测试
+                      │
+                      ▼
+                ④ OpenVINO 导出
+                      │
+              ┌───────┴───────┐
+              ▼               ▼
+       ⑤ 容器外推理       ⑥ ROS2 容器推理
 ```
 
-```
-export PYTHONPATH=$PYTHONPATH:PATH_TO_TCP
-```
+| # | 任务 | 命令 |
+|---|------|------|
+| ① | Roach 采集训练集 | `bash scripts/collect_data.sh` |
+| ② | TCP 模型训练 | `bash scripts/train.sh [gpus]` |
+| ③ | PyTorch 直接推理 | `python scripts/test_torch.py --ckpt /path/to/ckpt` |
+| ④ | OpenVINO 导出 | `python scripts/export_openvino.py --ckpt /path/to/ckpt` |
+| ⑤ | OpenVINO 容器外推理 | `python ${LEADERBOARD_ROOT}/leaderboard/leaderboard_evaluator.py --agent=leaderboard/team_code/ov_agent.py --agent-config=./weights/model.xml` |
+| ⑥ | ROS2 容器推理 | `cd docker/ros_client && docker-compose up -d` |
 
-## Dataset
+> **注意**：本项目使用 **自采数据集**（含 LiDAR 点云），需通过 CARLA + Roach 采集。原 TCP 数据集不含点云，不适用。`docker/ros_client/` 依赖 ros-bridge 子模块，克隆后请执行 `git submodule update --init`。
 
-Download our dataset through [Huggingface](https://huggingface.co/datasets/craigwu/tcp_carla_data) (combine the part with command `cat tcp_carla_data_part_* > tcp_carla_data.zip`) or [GoogleDrive](https://drive.google.com/file/d/1HZxlSZ_wUVWkNTWMXXcSQxtYdT7GogSm/view?usp=sharing) or [BaiduYun](https://pan.baidu.com/s/11xBZwAWQ3WxQXecuuPoexQ) (提取码 8174). The total size of our dataset is around 115G, make sure you have enough space.
-
-## Training
-First, set the dataset path in ``TCP/config.py``.
-Training:
-```
-python TCP/train.py --gpus NUM_OF_GPUS
-```
-
-## Data Generation
-First, launch the carla server,
-```
-cd CARLA_ROOT
-./CarlaUE4.sh --world-port=2000 -opengl
-```
-Set the carla path, routes file, scenario file, and data path for data generation in ``leaderboard/scripts/data_collection.sh``.
-
-Start data collection
+## 项目结构
 
 ```
-sh leaderboard/scripts/data_collection.sh
-```
-After the data collecting process, run `tools/filter_data.py` and `tools/gen_data.py` to filter out invalid data and pack the data for training.
-
-## Evaluation
-First, launch the carla server,
-```
-cd CARLA_ROOT
-./CarlaUE4.sh --world-port=2000 -opengl
-```
-Set the carla path, routes file, scenario file, model ckpt, and data path for evaluation in ``leaderboard/scripts/run_evaluation.sh``.
-
-Start the evaluation
-
-```
-sh leaderboard/scripts/run_evaluation.sh
+├── TCP/                # 模型训练核心（model.py, config.py, train.py）
+├── roach/              # Roach RL 专家模型（数据采集 teacher）
+├── leaderboard/        # CARLA Leaderboard 评估框架 + Agent
+├── ros_ws/             # ROS2 工作空间（vino_infer 推理包 + OpenVINO 权重）
+├── docker/             # 容器配置（训练 CUDA 12.8 + 推理 ROS2 Humble）
+├── scripts/            # 流水线入口脚本
+├── tools/              # 数据处理（filter_data.py, gen_data.py）
+└── scenario_runner/    # CARLA Scenario Runner
 ```
 
-## Citation
+## 鸣谢
 
-If you find our repo or our paper useful, please use the following citation:
+感谢 [华北电力大学 MOS 实验室](https://mos.ncepu.edu.cn/index.htm) 的培养并给予了我们创新的平台。  
+感谢两位队友 [gyk521](https://gitee.com/gyk521) [chenyanlingXIN](https://gitee.com/chenyanlingXIN) 的陪伴与支持！
 
-```
+## 引用
+
+```bibtex
 @inproceedings{wu2022trajectoryguided,
- title={Trajectory-guided Control Prediction for End-to-end Autonomous Driving: A Simple yet Strong Baseline}, 
- author={Penghao Wu and Xiaosong Jia and Li Chen and Junchi Yan and Hongyang Li and Yu Qiao},
- booktitle={NeurIPS},
- year={2022},
+  title={Trajectory-guided Control Prediction for End-to-end Autonomous Driving: A Simple yet Strong Baseline},
+  author={Penghao Wu and Xiaosong Jia and Li Chen and Junchi Yan and Hongyang Li and Yu Qiao},
+  booktitle={NeurIPS},
+  year={2022}
 }
 ```
 
 ## License
-All code within this repository is under [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0).
 
-## Acknowledgements
-
-Our code is based on several repositories:
-- [Transfuser](https://github.com/autonomousvision/transfuser)
-- [Roach](https://github.com/zhejz/carla-roach)
-- [CARLA Leaderboard](https://github.com/carla-simulator/leaderboard)
-- [Scenario Runner](https://github.com/carla-simulator/scenario_runner)
-
+[Apache License 2.0](LICENSE)

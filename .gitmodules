@@ -1,0 +1,3 @@
+[submodule "docker/ros_client/ros-bridge"]
+	path = docker/ros_client/ros-bridge
+	url = https://github.com/carla-simulator/ros-bridge.git

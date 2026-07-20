@@ -10,6 +10,7 @@ from multiprocessing import Pool
 
 INPUT_FRAMES = 1
 FUTURE_FRAMES = 4
+POINTS_SCALE = 16384
 
 
 def gen_single_route(route_folder):
@@ -33,6 +34,7 @@ def gen_single_route(route_folder):
 	seq_input_theta = []
 
 	seq_front_img = []
+	seq_lidar_data = []
 	seq_feature = []
 	seq_value = []
 	seq_speed = []
@@ -64,7 +66,6 @@ def gen_single_route(route_folder):
 			full_seq_y.append(measurement['x'])
 			full_seq_theta.append(measurement['theta'])
 
-
 		roach_supervision_data = np.load(os.path.join(route_folder, "supervision", f"{str(i).zfill(4)}.npy"), allow_pickle=True).item()
 		full_seq_feature.append(roach_supervision_data['features'])
 		full_seq_action.append(roach_supervision_data['action'])
@@ -92,6 +93,18 @@ def gen_single_route(route_folder):
 		seq_future_only_ap_brake.append(full_seq_only_ap_brake[i+1:i+FUTURE_FRAMES+1])
 
 		roach_supervision_data = np.load(os.path.join(route_folder, "supervision", f"{str(i).zfill(4)}.npy"), allow_pickle=True).item()
+		
+		lidar_file = os.path.join(route_folder, "lidar", f"{str(i).zfill(4)}.npy")
+		lidar_data = np.load(lidar_file, allow_pickle=True)
+		lidar_data = align_points(lidar_data)
+		
+		# 节约显存版
+		np.save(lidar_file, lidar_data, allow_pickle=True)
+		seq_lidar_data.append(lidar_file)
+
+		# 显存充裕版
+		# seq_lidar_data.append(lidar_data)
+
 		seq_feature.append(roach_supervision_data["features"])
 		seq_value.append(roach_supervision_data["value"])
 		
@@ -110,7 +123,8 @@ def gen_single_route(route_folder):
 
 		seq_only_ap_brake.append(roach_supervision_data["only_ap_brake"])
 
-	return seq_future_x, seq_future_y, seq_future_theta, seq_future_feature, seq_future_action, seq_future_action_mu, seq_future_action_sigma, seq_future_only_ap_brake, seq_input_x, seq_input_y, seq_input_theta, seq_front_img, seq_feature, seq_value, seq_speed, seq_action, seq_action_mu, seq_action_sigma, seq_x_target, seq_y_target, seq_target_command, seq_only_ap_brake
+
+	return seq_future_x, seq_future_y, seq_future_theta, seq_future_feature, seq_future_action, seq_future_action_mu, seq_future_action_sigma, seq_future_only_ap_brake, seq_input_x, seq_input_y, seq_input_theta, seq_front_img, seq_feature, seq_value, seq_speed, seq_action, seq_action_mu, seq_action_sigma, seq_x_target, seq_y_target, seq_target_command, seq_only_ap_brake, seq_lidar_data
 
 def gen_sub_folder(folder_path):
 	route_list = [folder for folder in os.listdir(folder_path) if os.path.isdir(os.path.join(folder_path, folder))]
@@ -145,11 +159,13 @@ def gen_sub_folder(folder_path):
 
 	total_only_ap_brake = []
 
+	total_lidar_data = []
+
 	for route in route_list:
 		seq_data = gen_single_route(os.path.join(folder_path, route))
 		if not seq_data:
 			continue
-		seq_future_x, seq_future_y, seq_future_theta, seq_future_feature, seq_future_action, seq_future_action_mu, seq_future_action_sigma, seq_future_only_ap_brake, seq_input_x, seq_input_y, seq_input_theta, seq_front_img, seq_feature, seq_value, seq_speed, seq_action, seq_action_mu, seq_action_sigma, seq_x_target, seq_y_target, seq_target_command, seq_only_ap_brake = seq_data
+		seq_future_x, seq_future_y, seq_future_theta, seq_future_feature, seq_future_action, seq_future_action_mu, seq_future_action_sigma, seq_future_only_ap_brake, seq_input_x, seq_input_y, seq_input_theta, seq_front_img, seq_feature, seq_value, seq_speed, seq_action, seq_action_mu, seq_action_sigma, seq_x_target, seq_y_target, seq_target_command, seq_only_ap_brake, seq_lidar_data = seq_data
 		total_future_x.extend(seq_future_x)
 		total_future_y.extend(seq_future_y)
 		total_future_theta.extend(seq_future_theta)
@@ -172,6 +188,7 @@ def gen_sub_folder(folder_path):
 		total_y_target.extend(seq_y_target)
 		total_target_command.extend(seq_target_command)
 		total_only_ap_brake.extend(seq_only_ap_brake)
+		total_lidar_data.extend(seq_lidar_data)
 
 	data_dict = {}
 	data_dict['future_x'] = total_future_x
@@ -196,16 +213,53 @@ def gen_sub_folder(folder_path):
 	data_dict['y_target'] = total_y_target
 	data_dict['target_command'] = total_target_command
 	data_dict['only_ap_brake'] = total_only_ap_brake
+	data_dict['lidar_data'] = total_lidar_data
 
 	file_path = os.path.join(folder_path, "packed_data")
 	np.save(file_path, data_dict)
 	return len(total_future_x)
 
+import numpy as np
+
+def align_points(points, num_points=POINTS_SCALE):
+    """
+    将点云对齐到固定点数 num_points，并保持点的原始顺序。
+
+    参数:
+        points: numpy.ndarray, shape (N, C) 或 (N,) 原始点云
+        num_points: int, 目标点数
+
+    返回:
+        aligned: numpy.ndarray, shape (num_points, C) 或 (num_points,)
+        mask: (可选) numpy.ndarray, shape (num_points,) 布尔掩码，True 表示真实点
+    """
+    N = points.shape[0]
+    C = points.shape[1] if points.ndim == 2 else 1
+
+    # 初始化输出数组和掩码
+    if points.ndim == 1:
+        aligned = np.zeros(num_points, dtype=points.dtype)
+    else:
+        aligned = np.zeros((num_points, C), dtype=points.dtype)
+
+    if N >= num_points:
+        # 随机选择 num_points 个不重复的索引
+        indices = np.random.choice(N, num_points, replace=False)
+        # 按索引升序排序，以保持原始顺序
+        indices.sort()
+        # 取对应点
+        aligned[:] = points[indices]
+    else:
+        # 点数不足：复制所有点，剩余部分补零
+        aligned[:N] = points
+    return aligned
 
 if __name__ == '__main__':
 	global data_path
-	data_path = "tcp_carla_data"
-	towns = ["town01","town01_val","town01_addition","town02","town02_val","town03","town03_val","town03_addition", "town04","town04_val", "town04_addition", "town05", "town05_val", "town05_addition" ,"town06","town06_val", "town06_addition","town07", "town07_val", "town10", "town10_addition","town10_val"]
+	# data_path = "tcp_carla_data"
+	# towns = ["town01","town01_val","town01_addition","town02","town02_val","town03","town03_val","town03_addition", "town04","town04_val", "town04_addition", "town05", "town05_val", "town05_addition" ,"town06","town06_val", "town06_addition","town07", "town07_val", "town10", "town10_addition","town10_val"]
+	data_path = "data"
+	towns = ["town01"]
 	pattern = "{}" # town type
 	import tqdm
 	total = 0

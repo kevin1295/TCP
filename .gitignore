@@ -1,4 +1,44 @@
+# Python
 __pycache__/
+*.pyc
+*.egg
+*.whl
+
+# Data
 data/
-.marscode/
+log/
+results/
+
+# IDE / Editors
 .vscode/
+.marscode/
+
+# Personal Claude config
+.claude/
+
+# Legacy backups
+leaderboard.old/
+docker.old/
+*_orig.py
+
+# Custom CUDA ops (source only, needs compilation)
+TCP/libs/
+
+# Experimental WIP
+TCP/litept/
+
+# Personal scripts / notes
+/download_tcp_data.sh
+
+# Archive / backup files
+*.zip
+*.waste
+*.bak
+
+# ROS2 workspace artifacts
+ros_ws/build/
+ros_ws/install/
+ros_ws/log/
+
+# Docker build artifacts
+docker/tuna-mirror/Miniconda3-latest-Linux-x86_64.sh
