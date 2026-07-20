@@ -42,3 +42,7 @@ ros_ws/log/
 
 # Docker build artifacts
 docker/tuna-mirror/Miniconda3-latest-Linux-x86_64.sh
+
+# Flash attention / model weights
+flash_attn*.whl
+resnet*.pth

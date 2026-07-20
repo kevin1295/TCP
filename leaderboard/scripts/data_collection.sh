@@ -1,5 +1,5 @@
 #!/bin/bash
-export CARLA_ROOT= PATH_TO_CARLA
+export CARLA_ROOT=/workspace/carla
 export CARLA_SERVER=${CARLA_ROOT}/CarlaUE4.sh
 export PYTHONPATH=$PYTHONPATH:${CARLA_ROOT}/PythonAPI
 export PYTHONPATH=$PYTHONPATH:${CARLA_ROOT}/PythonAPI/carla
@@ -17,14 +17,15 @@ export REPETITIONS=1 # multiple evaluation runs
 export RESUME=True
 export DATA_COLLECTION=True
 
+DATASETNAME=town01_val
 
 # Roach data collection
-export ROUTES=leaderboard/data/TCP_training_routes/routes_town01_val.xml
+export ROUTES=leaderboard/data/TCP_training_routes/routes_${DATASETNAME}.xml
 export TEAM_AGENT=team_code/roach_ap_agent.py
 export TEAM_CONFIG=roach/config/config_agent.yaml
-export CHECKPOINT_ENDPOINT=data/route_town01_val.json
+export CHECKPOINT_ENDPOINT=data/route_${DATASETNAME}.json
 export SCENARIOS=leaderboard/data/scenarios/all_towns_traffic_scenarios.json
-export SAVE_PATH=data/town01_val/
+export SAVE_PATH=data/${DATASETNAME}/
 
 
 

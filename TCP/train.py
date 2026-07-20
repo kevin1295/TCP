@@ -11,7 +11,8 @@ from torch.distributions import Beta
 
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import ModelCheckpoint
-from pytorch_lightning.plugins import DDPPlugin
+# from pytorch_lightning.plugins import DDPPlugin		# python37
+from pytorch_lightning.strategies import DDPStrategy	# python310
 
 from TCP.model import TCP
 from TCP.data import CARLA_Data
@@ -27,7 +28,7 @@ class TCP_planner(pl.LightningModule):
 		self._load_weight()
 
 	def _load_weight(self):
-		rl_state_dict = torch.load(self.config.rl_ckpt, map_location='cpu')['policy_state_dict']
+		rl_state_dict = torch.load(self.config.rl_ckpt, map_location='cpu', weights_only=False)['policy_state_dict']
 		self._load_state_dict(self.model.value_branch_traj, rl_state_dict, 'value_head')
 		self._load_state_dict(self.model.value_branch_ctrl, rl_state_dict, 'value_head')
 		self._load_state_dict(self.model.dist_mu, rl_state_dict, 'dist_mu')
@@ -183,21 +184,20 @@ if __name__ == "__main__":
 	checkpoint_callback = ModelCheckpoint(save_weights_only=False, mode="min", monitor="val_loss", save_top_k=2, save_last=True,
 											dirpath=args.logdir, filename="best_{epoch:02d}-{val_loss:.3f}")
 	checkpoint_callback.CHECKPOINT_NAME_LAST = "{epoch}-last"
-	trainer = pl.Trainer.from_argparse_args(args,
-											default_root_dir=args.logdir,
-											gpus = args.gpus,
-											accelerator='ddp',
-											sync_batchnorm=True,
-											plugins=DDPPlugin(find_unused_parameters=False),
-											profiler='simple',
-											benchmark=True,
-											log_every_n_steps=1,
-											flush_logs_every_n_steps=5,
-											callbacks=[checkpoint_callback,
-														],
-											check_val_every_n_epoch = args.val_every,
-											max_epochs = args.epochs
-											)
+	trainer = pl.Trainer(
+		accelerator='cuda',
+		strategy=DDPStrategy(find_unused_parameters=False),
+		devices=args.gpus,
+		num_nodes=1,
+		callbacks=[checkpoint_callback],
+		max_epochs=args.epochs,
+		check_val_every_n_epoch=args.val_every,
+		log_every_n_steps=1,
+		benchmark=True,
+		profiler='simple',
+		sync_batchnorm=True,
+		default_root_dir=args.logdir,
+		)
 
 	trainer.fit(TCP_model, dataloader_train, dataloader_val)
 

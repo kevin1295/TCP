@@ -23,11 +23,43 @@ from team_code.planner import RoutePlanner
 
 
 SAVE_PATH = os.environ.get('SAVE_PATH', None)
-
+POINTS_SCALE = 16384
 
 def get_entry_point():
 	return 'TCPAgent'
 
+def align_points(points, num_points=POINTS_SCALE):
+	"""
+	将点云对齐到固定点数 num_points，并保持点的原始顺序。
+
+	参数:
+		points: numpy.ndarray, shape (N, C) 或 (N,) 原始点云
+		num_points: int, 目标点数
+
+	返回:
+		aligned: numpy.ndarray, shape (num_points, C) 或 (num_points,)
+		mask: (可选) numpy.ndarray, shape (num_points,) 布尔掩码，True 表示真实点
+	"""
+	N = points.shape[0]
+	C = points.shape[1] if points.ndim == 2 else 1
+
+	# 初始化输出数组和掩码
+	if points.ndim == 1:
+		aligned = np.zeros(num_points, dtype=points.dtype)
+	else:
+		aligned = np.zeros((num_points, C), dtype=points.dtype)
+
+	if N >= num_points:
+		# 随机选择 num_points 个不重复的索引
+		indices = np.random.choice(N, num_points, replace=False)
+		# 按索引升序排序，以保持原始顺序
+		indices.sort()
+		# 取对应点
+		aligned[:] = points[indices]
+	else:
+		# 点数不足：复制所有点，剩余部分补零
+		aligned[:N] = points
+	return aligned
 
 class TCPAgent(autonomous_agent.AutonomousAgent):
 	def setup(self, path_to_conf_file):
@@ -79,6 +111,7 @@ class TCPAgent(autonomous_agent.AutonomousAgent):
 			(self.save_path / 'rgb').mkdir()
 			(self.save_path / 'meta').mkdir()
 			(self.save_path / 'bev').mkdir()
+			(self.save_path / 'lidar').mkdir()
 
 	def _init(self):
 		self._route_planner = RoutePlanner(4.0, 50.0)
@@ -126,7 +159,13 @@ class TCPAgent(autonomous_agent.AutonomousAgent):
 					'type': 'sensor.speedometer',
 					'reading_frequency': 20,
 					'id': 'speed'
-					}
+					},
+				{   
+                    'type': 'sensor.lidar.ray_cast',
+                    'x': 1.3, 'y': 0.0, 'z': 2.5,
+                    'roll': 0.0, 'pitch': 0.0, 'yaw': -90.0,
+                    'id': 'lidar'
+                    },
 				]
 
 	def tick(self, input_data):
@@ -137,6 +176,7 @@ class TCPAgent(autonomous_agent.AutonomousAgent):
 		gps = input_data['gps'][1][:2]
 		speed = input_data['speed'][1]['speed']
 		compass = input_data['imu'][1][-1]
+		lidar = input_data['lidar'][1]
 
 		if (math.isnan(compass) == True): #It can happen that the compass sends nan for a few frames
 			compass = 0.0
@@ -146,7 +186,8 @@ class TCPAgent(autonomous_agent.AutonomousAgent):
 				'gps': gps,
 				'speed': speed,
 				'compass': compass,
-				'bev': bev
+				'bev': bev,
+				'lidar': lidar,
 				}
 		
 		pos = self._get_position(result)
@@ -166,6 +207,7 @@ class TCPAgent(autonomous_agent.AutonomousAgent):
 		result['target_point'] = tuple(local_command_point)
 
 		return result
+
 	@torch.no_grad()
 	def run_step(self, input_data, timestamp):
 		if not self.initialized:
@@ -193,13 +235,13 @@ class TCPAgent(autonomous_agent.AutonomousAgent):
 		speed = torch.FloatTensor([float(tick_data['speed'])]).view(1,1).to('cuda', dtype=torch.float32)
 		speed = speed / 12
 		rgb = self._im_transform(tick_data['rgb']).unsqueeze(0).to('cuda', dtype=torch.float32)
-
+		lidar = torch.FloatTensor(align_points(tick_data['lidar'])).unsqueeze(0).to('cuda', dtype=torch.float32)
 		tick_data['target_point'] = [torch.FloatTensor([tick_data['target_point'][0]]),
 										torch.FloatTensor([tick_data['target_point'][1]])]
 		target_point = torch.stack(tick_data['target_point'], dim=1).to('cuda', dtype=torch.float32)
 		state = torch.cat([speed, target_point, cmd_one_hot], 1)
 
-		pred= self.net(rgb, state, target_point)
+		pred= self.net(rgb, state, target_point, lidar)
 
 		steer_ctrl, throttle_ctrl, brake_ctrl, metadata = self.net.process_action(pred, tick_data['next_command'], gt_velocity, target_point)
 

@@ -3,7 +3,7 @@ import numpy as np
 import torch 
 from torch import nn
 from TCP.resnet import *
-
+from TCP.litept.model import LitePT
 
 class PIDController(object):
     def __init__(self, K_P=1.0, K_I=0.0, K_D=0.0, n=20):
@@ -32,7 +32,7 @@ class PIDController(object):
 
 class SimplePointNet(nn.Module):
     """
-    一个极简的PointNet风格编码器，输入 (B, N, 3)，输出 (B, lidar_dim)
+    一个极简的PointNet风格编码器，输入 (B, N, 4)，输出 (B, lidar_dim)
     作为临时占位，后续可替换为真正的PTv2轻量版。
     """
     def __init__(self, lidar_dim=256):
@@ -64,6 +64,31 @@ class SimplePointNet(nn.Module):
 # TODO:
 # 参考 https://github.com/prs-eth/LitePT/blob/main/README.md#use-litept-in-your-own-project
 # 但需要重写数据加载，原文数据格式是一个字典，这个不是很好
+
+
+class LitePTWrapper(nn.Module):
+    def __init__(self, lidar_dim=256):
+        super().__init__()
+        self.lidar_dim = lidar_dim
+        self.model = LitePT(
+            inchannels=4,
+            enc_mode=True,
+        )
+
+    def forward(self, XYZIntensity):
+        # XYZIntensity: [(N_1, 4), (N_2, 4), ..., (N_B, 4)]
+        feat = torch.cat(XYZIntensity, dim=0)  # (N_total, 4)
+        coord = feat[:, :3]  # (N_total, 3)
+        grid_size = 0.05
+        _num_b = torch.tensor([t.shape[0] for t in XYZIntensity])  # (B,)
+        offset = torch.cat([torch.tensor([0]), _num_b.cumsum(0)[:-1]])
+        data_dict = {
+            "coord": coord,
+            "grid_size": grid_size,
+            "offset": offset,
+        }
+        result = self.model(data_dict)
+        return result["feat"]
 
 class TCP(nn.Module):
     def __init__(self, config, lidar_dim=256):
