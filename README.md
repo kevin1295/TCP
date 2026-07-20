@@ -31,7 +31,7 @@
 | ⑤ | OpenVINO 容器外推理 | `python ${LEADERBOARD_ROOT}/leaderboard/leaderboard_evaluator.py --agent=leaderboard/team_code/ov_agent.py --agent-config=./weights/model.xml` |
 | ⑥ | ROS2 容器推理 | `cd docker/ros_client && docker-compose up -d` |
 
-> **注意**：本项目使用 **自采数据集**（含 LiDAR 点云），需通过 CARLA + Roach 采集。原 TCP 数据集不含点云，不适用。`docker/ros_client/` 依赖 ros-bridge 子模块，克隆后请执行 `git submodule update --init`。
+> **注意**：本项目使用 **自采数据集**（含 LiDAR 点云），需通过 CARLA + Roach 采集。原 TCP 数据集不含点云，不适用。`docker/ros_client/` 依赖 ros-bridge 子模块（含 carla_msgs 嵌套子模块），克隆后请执行 `git submodule update --init --recursive`。
 
 ## 项目结构
 

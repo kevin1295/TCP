@@ -1,8 +1,16 @@
+"""
+v2: TCP + SimplePointNet LiDAR 编码器
+- 含 LiDAR 输入
+- forward(self, img, state, target_point, pcl)
+- pcl: (B, N, 4) 点云数据
+"""
+
 from collections import deque
 import numpy as np
-import torch 
+import torch
 from torch import nn
 from TCP.resnet import *
+
 
 class PIDController(object):
     def __init__(self, K_P=1.0, K_I=0.0, K_D=0.0, n=20):
@@ -59,6 +67,7 @@ class SimplePointNet(nn.Module):
         x = self.global_pool(x)         # (B, lidar_dim, 1)
         x = x.squeeze(-1)               # (B, lidar_dim)
         return x
+
 
 class TCP(nn.Module):
     def __init__(self, config, lidar_dim=256):
@@ -176,7 +185,8 @@ class TCP(nn.Module):
 
     def forward(self, img, state, target_point, pcl):
         """
-        新增 pcl: 点云数据, shape (B, N, 3)
+        v2: TCP + SimplePointNet
+        新增 pcl: 点云数据, shape (B, N, 4)
         """
         # 1. 提取视觉特征
         feature_emb, cnn_feature = self.perception(img)   # feature_emb: (B,1000), cnn_feature: (B,512,H,W) 假设 H=8, W=29
@@ -240,7 +250,7 @@ class TCP(nn.Module):
         sigma = outputs['sigma_branches']
         future_feature, future_mu, future_sigma = [], [], []
         h = torch.zeros(size=(x.shape[0], 256), dtype=x.dtype).type_as(x)
-        
+
         for _ in range(self.config.pred_len):
             x_in = torch.cat([x, mu, sigma], dim=1)
             h = self.decoder_ctrl(x_in, h)
