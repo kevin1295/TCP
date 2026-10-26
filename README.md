@@ -74,6 +74,20 @@ TCP_MODEL=tcp_original python TCP/train.py --gpus 1   # 单次覆盖
 
 - **数据集**：本项目使用**自采数据集**（含 LiDAR 点云），须经 CARLA + Roach 采集；原 TCP 数据集不含点云，不适用（下载脚本 `scripts/download_tcp_data.sh` 仅供 v1 基线参考）。
 
+- **⚠️ `TCP/models/tcp_v3.py` 是 AI 复现，不是当年的代码。**
+  原始 v3 实现**在机器之间传输时丢失**，仓里一度只剩一个 34 行的占位（构造函数直接
+  `raise NotImplementedError`，只在 docstring 里写着"双路 PointNet + 门控融合"的设计）。
+  2026-10 依据那段设计重写成了现在的版本：
+  **从未训练、从未跑过闭环、投影与外参方向也没在真实数据上核对过**。
+  - 它能 `py_compile`，结构上与 v2 兼容（下游三处注入点一致），仅此而已；
+  - 不要引用它的任何结果，没有结果；
+  - 当年真正训练并参赛的是第 3 代 **LEAD/TFv6**（CherryDrive 的 `new_LEAD/`），本仓的
+    `tcp_v3` 只是"设计的一种实现示例"。
+
+- **图像预处理**：`ros_ws/src/vino_infer/vino_infer/pilot.py` 里原本把 `(H,W,C)` 直接
+  `reshape(1,900,256,3)` 喂给 NCHW 的 IR（元素总数恰好对得上，**不报错但推理结果错误**），
+  2026-10 已改为 `transpose(2,0,1)` 后再 reshape。若你手上的副本还是老写法，请一并改掉。
+
 ## 目录结构
 
 ```
