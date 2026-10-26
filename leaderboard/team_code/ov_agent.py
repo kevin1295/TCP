@@ -9,7 +9,7 @@
     export SAVE_PATH=./results
     python ${LEADERBOARD_ROOT}/leaderboard/leaderboard_evaluator.py \
         --agent=${LEADERBOARD_ROOT}/leaderboard/team_code/ov_agent.py \
-        --agent-config=${LEADERBOARD_ROOT}/leaderboard/team_code/weights/tcp_deploy_fp16.xml
+        --agent-config=${LEADERBOARD_ROOT}/leaderboard/team_code/weights/model_fp32.xml
 """
 
 import os

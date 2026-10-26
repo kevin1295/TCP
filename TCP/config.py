@@ -29,6 +29,16 @@ class GlobalConfig:
 	scale = 1 # image pre-processing
 	crop = 256 # image pre-processing
 
+	# ---- v3 标定参数（来源：leaderboard/team_code/tcp_agent.py sensors()）----
+	# 相机：type=sensor.camera.rgb，900x256，fov=100，位姿 x=-1.5 z=2.0，roll=pitch=yaw=0
+	img_w = 900
+	img_h = 256
+	cam_fov = 100.0
+	cam_pos = (-1.5, 0.0, 2.0)
+	# LiDAR：type=sensor.lidar.ray_cast，位姿 x=1.3 z=2.5，yaw=-90
+	lidar_pos = (1.3, 0.0, 2.5)
+	lidar_yaw = -90.0
+
 	lr = 1e-4 # learning rate
 
 	# Controller

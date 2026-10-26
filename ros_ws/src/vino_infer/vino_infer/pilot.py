@@ -262,7 +262,9 @@ class Pilot:
         cmd_one_hot = [0] * 6
         cmd_one_hot[4 if next_cmd < 0 else next_cmd] = 1
 
-        rgb = rgb.reshape(1, 900, 256, 3)
+        # (H, W, C) → (C, H, W)：IR 的输入是 1×3×256×900（NCHW），
+        # 直接 reshape 会把 H/W 当成 900/256 且保持 HWC 内存序，通道错位但不报错。
+        rgb = np.ascontiguousarray(rgb.transpose(2, 0, 1)).reshape(1, 3, 256, 900).astype(np.float32)
         state = np.concatenate([speed_val, target_point, cmd_one_hot], axis=0).reshape(1, -1)
         target_point = target_point.reshape(1, 2)
         lidar = lidar.reshape(1, 16384, 4)

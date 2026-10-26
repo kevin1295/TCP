@@ -4,7 +4,7 @@ TCP 模型 Dispatcher
 通过环境变量 TCP_MODEL 切换模型变体：
   TCP_MODEL=tcp_original        v1: 原始 TCP（无 LiDAR）
   TCP_MODEL=tcp_simplepointnet  v2: TCP + SimplePointNet（默认）
-  TCP_MODEL=tcp_v3              v3: 第三代模型（TODO）
+  TCP_MODEL=tcp_v3              v3: 双路 PointNet + 视觉门控融合（2026-10 补实现，未训练/未验证）
 
 用法：
   export TCP_MODEL=tcp_original
